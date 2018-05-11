@@ -4,6 +4,7 @@
 LC_TIME=C
 CRL_DIR=/some/crl/path
 CRL_LIST="http://www.sk.ee/crls/eeccrca/eeccrca.crl http://www.sk.ee/repository/crls/esteid2011.crl http://www.sk.ee/crls/esteid/esteid2015.crl http://www.sk.ee/repository/crls/eid2011.crl"
+CRL_UPDATE_THRESHOLD=5400
 
 # Function to download CRL and convert from DER to PEM format
 ## $1 is $crl
@@ -38,8 +39,11 @@ for crl in $CRL_LIST; do
     # Get CRL next update in unix timestamp
     crl_expire_date=$(date -d "$(date -d "$(openssl crl -in $CRL_DIR/$crl_file -nextupdate -noout|cut -d = -f 2)" "+%b %d %H:%M:%S %Y %Z")" "+%s")
 
-    # If current unix timestamp is greater than crl expire unix timestamp, use get_crl function and set doreload variable to true
-    if [ $crl_current_date -gt $crl_expire_date ]; then
+    # Calculate crl expire timestamp and current unix timestamp difference in seconds
+    crl_expire_diff=$((crl_expire_date-$crl_current_date))
+
+    # If crl expire difference is less than crl update threshold (in seconds), use get_crl function and set doreload variable to true
+    if [ $crl_expire_diff -lt $CRL_UPDATE_THRESHOLD ]; then
         get_crl $crl $CRL_DIR $crl_file
         doreload=true
     fi
